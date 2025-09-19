@@ -567,7 +567,52 @@ with tabs[1]:
     df = load_company_df(company)
     if df.empty:
         st.warning("برای این شرکت پاسخی وجود ندارد."); st.stop()
+# === 👥 آمار پاسخ‌دهندگان (ابتدای داشبورد) ===
+st.markdown('<div class="panel"><h4>👥 آمار پاسخ‌دهندگان</h4>', unsafe_allow_html=True)
 
+# تعداد کل ردیف‌ها (هر ردیف = یک بار پرشدن پرسشنامه)
+resp_total = len(df)
+
+# برآورد نفرات یکتا بر مبنای نام وارد‌شده (ممکن است برخی خالی باشد)
+unique_count = (
+    df["respondent"]
+    .astype(str)
+    .str.strip()
+    .replace("", np.nan)
+    .nunique()
+)
+
+# کارت‌های خلاصه
+kA, kB = st.columns(2)
+kA.markdown(
+    f"""<div class="kpi"><div class="title">تعداد پرسشنامه‌های ثبت‌شده</div>
+    <div class="value">{resp_total}</div><div class="sub">کل ردیف‌های این شرکت</div></div>""",
+    unsafe_allow_html=True
+)
+kB.markdown(
+    f"""<div class="kpi"><div class="title">برآورد «نفرات یکتا»</div>
+    <div class="value">{unique_count}</div><div class="sub">بر پایهٔ نام واردشده (اختیاری)</div></div>""",
+    unsafe_allow_html=True
+)
+
+# شمارش به تفکیک رده سازمانی (برحسب تعداد پرسشنامه‌ها)
+role_counts = df["role"].value_counts().reindex(ROLES, fill_value=0)
+rc_df = pd.DataFrame({"نقش": role_counts.index, "تعداد پرسشنامه": role_counts.values})
+
+c1, c2 = st.columns([2, 3])
+with c1:
+    st.dataframe(rc_df, use_container_width=True, hide_index=True)
+with c2:
+    fig_rc = px.bar(
+        rc_df, x="نقش", y="تعداد پرسشنامه",
+        template=PLOTLY_TEMPLATE, title="تعداد به تفکیک رده سازمانی"
+    )
+    st.plotly_chart(fig_rc, use_container_width=True)
+
+st.caption("نکته: اگر یک نفر چند بار فرم را پر کند، در آمار «پرسشنامه‌ها» چندبار شمرده می‌شود.")
+st.markdown('</div>', unsafe_allow_html=True)
+# === پایان آمار پاسخ‌دهندگان ===
+    
     # نرمال‌سازی 0..100
     for t in TOPICS:
         c=f"t{t['id']}_adj"
@@ -713,3 +758,4 @@ with tabs[1]:
                        file_name=f"{_sanitize_company_name(company)}_responses.csv", mime="text/csv")
     st.caption("برای دانلود تصویر نمودارها، می‌توانید بستهٔ اختیاری `kaleido` را نصب کنید.")
     st.markdown('</div>', unsafe_allow_html=True)
+
