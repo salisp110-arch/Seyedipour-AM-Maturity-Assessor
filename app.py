@@ -1,14 +1,15 @@
 # app.py
 # -*- coding: utf-8 -*-
-import os, io, json, base64, requests
+import os, io, json, base64, requests, re
 import numpy as np
 import pandas as pd
 import streamlit as st
 from pathlib import Path
 from datetime import datetime
 from typing import Optional
+from urllib.parse import quote  # برای URL-encode مسیر گیت‌هاب
 
-# ---------- بررسی وجود plotly (برای جلوگیری از ModuleNotFound) ----------
+# ---------- بررسی وجود plotly ----------
 def _has_pkg(pkg, version=None):
     try:
         __import__(pkg)
@@ -35,7 +36,7 @@ st.set_page_config(page_title="پرسشنامه و داشبورد مدیریت �
 BASE = Path("."); DATA_DIR = BASE/"data"; ASSETS_DIR = BASE/"assets"
 DATA_DIR.mkdir(exist_ok=True); ASSETS_DIR.mkdir(exist_ok=True)
 
-# ---------- استایل و فونت وزیر ----------
+# ---------- استایل و فونت ----------
 st.markdown("""
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/rastikerdar/vazir-font@v30.1.0/dist/font-face.css">
 <style>
@@ -57,7 +58,7 @@ h1,h2,h3,h4{ color:#16325c; }
 .q-question{ color:#0f3b8f; font-weight:700; margin:.2rem 0 .4rem 0; }
 
 .kpi{
-  <style>
+<style>
   border-radius:14px; padding:16px 18px; border:1px solid #e6ecf5;
   background:linear-gradient(180deg,#ffffff 0%,#f6f9ff 100%); box-shadow:0 8px 20px rgba(0,0,0,0.05);
   min-height:96px;
@@ -175,7 +176,8 @@ if len(TOPICS)!=40:
 
 # ---------- نقش‌ها و رنگ‌ها ----------
 ROLES = ["مدیران ارشد","مدیران اجرایی","سرپرستان / خبرگان","متخصصان فنی","متخصصان غیر فنی"]
-ROLE_COLORS = {"مدیران ارشد":"#d62728","مدیران اجرایی":"#1f77b4","سرپرستان / خبرگان":"#2ca02c","متخصصان فنی":"#ff7f0e","متخصصان غیر فنی":"#9467bd","میانگین سازمان":"#111"}
+ROLE_COLORS = {"مدیران ارشد":"#d62728","مدیران اجرایی":"#1f77b4","سرپرستان / خبرگان":"#2ca02c",
+               "متخصصان فنی":"#ff7f0e","متخصصان غیر فنی":"#9467bd","میانگین سازمان":"#111"}
 
 # ---------- گزینه‌های پاسخ ----------
 LEVEL_OPTIONS = [
@@ -187,7 +189,7 @@ LEVEL_OPTIONS = [
 ]
 REL_OPTIONS = [("هیچ ارتباطی ندارد.",1),("ارتباط کم دارد.",3),("تا حدی مرتبط است.",5),("ارتباط زیادی دارد.",7),("کاملاً مرتبط است.",10)]
 
-# ---------- وزن‌های فازی نرمال‌شده ----------
+# ---------- وزن‌های فازی ----------
 ROLE_MAP_EN2FA={"Senior Managers":"مدیران ارشد","Executives":"مدیران اجرایی","Supervisors/Sr Experts":"سرپرستان / خبرگان","Technical Experts":"متخصصان فنی","Non-Technical Experts":"متخصصان غیر فنی"}
 NORM_WEIGHTS = {
     1:{"Senior Managers":0.3846,"Executives":0.2692,"Supervisors/Sr Experts":0.1923,"Technical Experts":0.1154,"Non-Technical Experts":0.0385},
@@ -232,7 +234,7 @@ NORM_WEIGHTS = {
     40:{"Senior Managers":0.3846,"Executives":0.2692,"Supervisors/Sr Experts":0.1154,"Technical Experts":0.0385,"Non-Technical Experts":0.1923},
 }
 
-# ---------- GitHub backend (اختیاری/پایدار رایگان) ----------
+# ---------- GitHub backend (اختیاری/پایدار) ----------
 def _get_secret(name, default=""):
     try:
         val = st.secrets.get(name, None)
@@ -254,13 +256,14 @@ def _gh_headers():
         "Accept": "application/vnd.github+json",
     }
 
+def _encode_path(path: str) -> str:
+    # هر بخش مسیر را جداگانه encode می‌کنیم تا حروف فارسی/فاصله‌ها اوکی شوند
+    return "/".join(quote(seg) for seg in path.split("/"))
+
 def _gh_contents_url(path):
-    return f"https://api.github.com/repos/{GH_REPO}/contents/{path}"
+    return f"https://api.github.com/repos/{GH_REPO}/contents/{_encode_path(path)}"
 
 def _gh_get_file(path):
-    """
-    برمی‌گرداند: (sha, bytes) یا (None, None) اگر نبود/خطا.
-    """
     try:
         url = _gh_contents_url(path)
         params = {"ref": GH_BRANCH}
@@ -279,9 +282,6 @@ def _gh_get_file(path):
         return None, None
 
 def _gh_put_file(path, content_bytes, message, sha=None):
-    """
-    ایجاد/به‌روزرسانی فایل در GitHub.
-    """
     url = _gh_contents_url(path)
     body = {
         "message": message,
@@ -290,15 +290,11 @@ def _gh_put_file(path, content_bytes, message, sha=None):
     }
     if sha:
         body["sha"] = sha
-    r = requests.put(url, headers=_gh_headers(), json=body, timeout=20)
+    r = requests.put(url, headers=_gh_headers(), json=body, timeout=25)
     if r.status_code not in (200, 201):
         raise RuntimeError(f"GitHub PUT failed: {r.status_code} {r.text[:200]}")
 
 def _gh_list_companies():
-    """
-    فهرست شرکت‌ها بر اساس ساختار: GH_DIR/<company>/responses.csv
-    از طریق GitHub Contents API.
-    """
     companies = set()
     try:
         url = _gh_contents_url(GH_DIR)
@@ -306,27 +302,30 @@ def _gh_list_companies():
         r = requests.get(url, headers=_gh_headers(), params=params, timeout=20)
         if r.status_code == 200:
             items = r.json()
-            # اگر GH_DIR به‌صورت پوشه باشد، items آرایه‌ای از محتویات است
             for it in items:
                 if it.get("type") == "dir" and it.get("name"):
-                    # بررسی وجود responses.csv داخلش
+                    # بررسی وجود responses.csv
                     sub = f"{GH_DIR}/{it['name']}/responses.csv"
-                    sha, content = _gh_get_file(sub)
+                    _, content = _gh_get_file(sub)
                     if content:
                         companies.add(it["name"])
-        # اگر GH_DIR خودش وجود نداشته باشد، هیچ
     except Exception:
         pass
     return sorted(companies)
 
 # ---------- کمک‌توابع داده ----------
+def _sanitize_company_name(name: str) -> str:
+    """نام شرکت برای مسیر فایل (حذف / و \\ و کنترل فاصله‌ها)"""
+    s = (name or "").strip()
+    s = s.replace("/", "／").replace("\\", "＼")
+    s = re.sub(r"\s+", " ", s)
+    s = s.strip(".")
+    return s
+
 def ensure_company(company: str):
-    """
-    در GitHub نیازی به ساخت دایرکتوری نیست.
-    در حالت محلی، پوشهٔ شرکت ساخته می‌شود.
-    """
     if not USE_GH:
-        (DATA_DIR/company).mkdir(parents=True, exist_ok=True)
+        folder = DATA_DIR/_sanitize_company_name(company)
+        folder.mkdir(parents=True, exist_ok=True)
 
 def _standard_cols():
     cols=["timestamp","company","respondent","role"]
@@ -335,8 +334,10 @@ def _standard_cols():
     return cols
 
 def load_company_df(company: str) -> pd.DataFrame:
-    ensure_company(company)
+    company = _sanitize_company_name(company)
     cols = _standard_cols()
+
+    # --- تلاش از GitHub ---
     if USE_GH:
         gh_path = f"{GH_DIR}/{company}/responses.csv"
         sha, content = _gh_get_file(gh_path)
@@ -345,33 +346,39 @@ def load_company_df(company: str) -> pd.DataFrame:
                 from io import BytesIO
                 return pd.read_csv(BytesIO(content))
             except Exception:
-                return pd.DataFrame(columns=cols)
-        else:
-            return pd.DataFrame(columns=cols)
-    # --- حالت محلی ---
+                # اگر CSV خراب/ناخوانا بود، به لوکال برگرد
+                pass
+
+    # --- حالت محلی (fallback یا حالت عادی) ---
     p = DATA_DIR/company/"responses.csv"
     return pd.read_csv(p) if p.exists() else pd.DataFrame(columns=cols)
 
 def save_response(company: str, rec: dict):
-    df_old = load_company_df(company)
+    # company اصلی برای داخل CSV می‌ماند؛ برای مسیر ذخیره از sanitized استفاده می‌کنیم
+    folder_name = _sanitize_company_name(company)
+
+    # ابتدا دیتافریم موجود را (با fallback) بخوانیم
+    df_old = load_company_df(folder_name)
     df_new = pd.concat([df_old, pd.DataFrame([rec])], ignore_index=True)
+
+    # --- تلاش برای نوشتن در GitHub ---
     if USE_GH:
-        gh_path = f"{GH_DIR}/{company}/responses.csv"
-        sha, _content = _gh_get_file(gh_path)
+        gh_path = f"{GH_DIR}/{folder_name}/responses.csv"
+        sha, _existing = _gh_get_file(gh_path)
         csv_bytes = df_new.to_csv(index=False).encode("utf-8")
-        msg = f"Add response: {company} @ {rec.get('timestamp','')}"
+        msg = f"Add response: {folder_name} @ {rec.get('timestamp','')}"
         try:
             _gh_put_file(gh_path, csv_bytes, msg, sha=sha)
             return
         except Exception:
-            # اگر commit شکست خورد، به لوکال برگرد تا داده از دست نرود
-            pass
-    # --- fallback محلی ---
-    (DATA_DIR/company).mkdir(parents=True, exist_ok=True)
-    df_new.to_csv(DATA_DIR/company/"responses.csv", index=False)
+            st.warning("ذخیره در GitHub ناموفق بود؛ به‌صورت محلی ذخیره شد. مدیر سیستم PAT/دسترسی GitHub را بررسی کند.")
+
+    # --- ذخیره لوکال (fallback) ---
+    (DATA_DIR/folder_name).mkdir(parents=True, exist_ok=True)
+    df_new.to_csv(DATA_DIR/folder_name/"responses.csv", index=False)
 
 def get_company_logo_path(company:str)->Optional[Path]:
-    folder=DATA_DIR/company
+    folder=DATA_DIR/_sanitize_company_name(company)
     for ext in ("png","jpg","jpeg"):
         p=folder/f"logo.{ext}"
         if p.exists(): return p
@@ -485,7 +492,7 @@ with tabs[0]:
     # باکس راهنما
     st.info("برای هر موضوع ابتدا توضیح فارسی آن را بخوانید، سپس با توجه به دو پرسش ذیل هر موضوع، یکی از گزینه‌های زیر هر پرسش را انتخاب بفرمایید.")
 
-    company = st.text_input("نام شرکت")
+    company_input = st.text_input("نام شرکت")
     respondent = st.text_input("نام و نام خانوادگی (اختیاری)")
     role = st.selectbox("نقش / رده سازمانی", ROLES)
 
@@ -504,19 +511,23 @@ with tabs[0]:
         answers[t['id']] = (m_choice, r_choice)
 
     if st.button("ثبت پاسخ"):
+        company = (company_input or "").strip()
+        role_val = (role or "").strip()
         if not company: st.error("نام شرکت را وارد کنید.")
-        elif not role: st.error("نقش/رده سازمانی را انتخاب کنید.")
+        elif not role_val: st.error("نقش/رده سازمانی را انتخاب کنید.")
         elif len(answers)!=len(TOPICS): st.error("لطفاً همهٔ ۴۰ موضوع را پاسخ دهید.")
         else:
             ensure_company(company)
-            rec={"timestamp":datetime.now().isoformat(timespec="seconds"),"company":company,"respondent":respondent,"role":role}
+            rec={"timestamp":datetime.now().isoformat(timespec="seconds"),
+                 "company":company,"respondent":respondent,"role":role_val}
             m_map = dict(LEVEL_OPTIONS); r_map = dict(REL_OPTIONS)
             for t in TOPICS:
                 m_label, r_label = answers[t['id']]
                 m = m_map.get(m_label, 0)
                 r = r_map.get(r_label, 1)
                 rec[f"t{t['id']}_maturity"]=m; rec[f"t{t['id']}_rel"]=r; rec[f"t{t['id']}_adj"]=m*r
-            save_response(company, rec); st.success("✅ پاسخ شما با موفقیت ذخیره شد.")
+            save_response(company, rec)
+            st.success("✅ پاسخ شما با موفقیت ذخیره شد.")
 
 # ======================= داشبورد =======================
 with tabs[1]:
@@ -525,27 +536,37 @@ with tabs[1]:
     if password != "Emacraven110":
         st.error("دسترسی محدود است. رمز عبور درست را وارد کنید."); st.stop()
 
+    # نمایش وضعیت backend
+    st.caption(
+        f"حالت ذخیره‌سازی: {'GitHub' if USE_GH else 'Local CSV'}"
+        + (f" — {GH_REPO} · {GH_BRANCH} · {GH_DIR}" if USE_GH else "")
+    )
+
     # لیست شرکت‌ها (GitHub + لوکال)
     companies_local = sorted([d.name for d in DATA_DIR.iterdir() if d.is_dir()])
     companies_github = _gh_list_companies() if USE_GH else []
     companies = sorted(set(companies_local) | set(companies_github))
     if not companies: st.warning("هنوز هیچ پاسخی ثبت نشده است."); st.stop()
-    company = st.selectbox("انتخاب شرکت", companies)
+
+    company_sel = st.selectbox("انتخاب شرکت", companies)
+    company = (company_sel or "").strip()
 
     colL, colH, colC = st.columns([1,1,6])
+    holding_logo_path = ASSETS_DIR/"holding_logo.png"
     with colH:
         if holding_logo_path.exists(): st.image(str(holding_logo_path), width=90, caption="هلدینگ")
     with colL:
         st.caption("لوگوی شرکت (لوکال):")
         comp_logo_file = st.file_uploader("آپلود/به‌روزرسانی لوگو", key="uplogo", type=["png","jpg","jpeg"])
         if comp_logo_file:
-            (DATA_DIR/company/"logo.png").write_bytes(comp_logo_file.getbuffer())
+            (DATA_DIR/_sanitize_company_name(company)/"logo.png").write_bytes(comp_logo_file.getbuffer())
             st.success("لوگوی شرکت ذخیره شد.")
         comp_logo_path = get_company_logo_path(company)
         if comp_logo_path: st.image(str(comp_logo_path), width=90, caption=company)
 
     df = load_company_df(company)
-    if df.empty: st.warning("برای این شرکت پاسخی وجود ندارد."); st.stop()
+    if df.empty:
+        st.warning("برای این شرکت پاسخی وجود ندارد."); st.stop()
 
     # نرمال‌سازی 0..100
     for t in TOPICS:
@@ -689,7 +710,6 @@ with tabs[1]:
     st.markdown('<div class="panel"><h4>دانلود</h4>', unsafe_allow_html=True)
     st.download_button("⬇️ دانلود CSV پاسخ‌های شرکت",
                        data=load_company_df(company).to_csv(index=False).encode("utf-8-sig"),
-                       file_name=f"{company}_responses.csv", mime="text/csv")
+                       file_name=f"{_sanitize_company_name(company)}_responses.csv", mime="text/csv")
     st.caption("برای دانلود تصویر نمودارها، می‌توانید بستهٔ اختیاری `kaleido` را نصب کنید.")
     st.markdown('</div>', unsafe_allow_html=True)
-
