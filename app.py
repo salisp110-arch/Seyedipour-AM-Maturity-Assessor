@@ -57,6 +57,7 @@ h1,h2,h3,h4{ color:#16325c; }
 .q-question{ color:#0f3b8f; font-weight:700; margin:.2rem 0 .4rem 0; }
 
 .kpi{
+  <style>
   border-radius:14px; padding:16px 18px; border:1px solid #e6ecf5;
   background:linear-gradient(180deg,#ffffff 0%,#f6f9ff 100%); box-shadow:0 8px 20px rgba(0,0,0,0.05);
   min-height:96px;
@@ -691,3 +692,4 @@ with tabs[1]:
                        file_name=f"{company}_responses.csv", mime="text/csv")
     st.caption("برای دانلود تصویر نمودارها، می‌توانید بستهٔ اختیاری `kaleido` را نصب کنید.")
     st.markdown('</div>', unsafe_allow_html=True)
+
