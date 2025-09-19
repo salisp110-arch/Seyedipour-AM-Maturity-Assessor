@@ -1,0 +1,8 @@
+streamlit>=1.28,<2
+plotly==5.22.0
+pandas>=2.0
+numpy>=1.24
+scikit-learn>=1.2   # اختیاری (برای خوشه‌بندی)
+typing_extensions>=4.6
+kaleido>=0.2        # اختیاری (برای ذخیره تصویر نمودارها)
+requests>=2.31
