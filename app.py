@@ -58,7 +58,6 @@ h1,h2,h3,h4{ color:#16325c; }
 .q-question{ color:#0f3b8f; font-weight:700; margin:.2rem 0 .4rem 0; }
 
 .kpi{
-<style>
   border-radius:14px; padding:16px 18px; border:1px solid #e6ecf5;
   background:linear-gradient(180deg,#ffffff 0%,#f6f9ff 100%); box-shadow:0 8px 20px rgba(0,0,0,0.05);
   min-height:96px;
@@ -346,8 +345,7 @@ def load_company_df(company: str) -> pd.DataFrame:
                 from io import BytesIO
                 return pd.read_csv(BytesIO(content))
             except Exception:
-                # اگر CSV خراب/ناخوانا بود، به لوکال برگرد
-                pass
+                pass  # اگر CSV خراب/ناخوانا بود، به لوکال برگرد
 
     # --- حالت محلی (fallback یا حالت عادی) ---
     p = DATA_DIR/company/"responses.csv"
@@ -546,15 +544,16 @@ with tabs[1]:
     companies_local = sorted([d.name for d in DATA_DIR.iterdir() if d.is_dir()])
     companies_github = _gh_list_companies() if USE_GH else []
     companies = sorted(set(companies_local) | set(companies_github))
-    if not companies: st.warning("هنوز هیچ پاسخی ثبت نشده است."); st.stop()
-
+    if not companies:
+        st.warning("هنوز هیچ پاسخی ثبت نشده است."); st.stop()
     company_sel = st.selectbox("انتخاب شرکت", companies)
     company = (company_sel or "").strip()
 
     colL, colH, colC = st.columns([1,1,6])
     holding_logo_path = ASSETS_DIR/"holding_logo.png"
     with colH:
-        if holding_logo_path.exists(): st.image(str(holding_logo_path), width=90, caption="هلدینگ")
+        if holding_logo_path.exists():
+            st.image(str(holding_logo_path), width=90, caption="هلدینگ")
     with colL:
         st.caption("لوگوی شرکت (لوکال):")
         comp_logo_file = st.file_uploader("آپلود/به‌روزرسانی لوگو", key="uplogo", type=["png","jpg","jpeg"])
@@ -562,85 +561,90 @@ with tabs[1]:
             (DATA_DIR/_sanitize_company_name(company)/"logo.png").write_bytes(comp_logo_file.getbuffer())
             st.success("لوگوی شرکت ذخیره شد.")
         comp_logo_path = get_company_logo_path(company)
-        if comp_logo_path: st.image(str(comp_logo_path), width=90, caption=company)
+        if comp_logo_path:
+            st.image(str(comp_logo_path), width=90, caption=company)
 
     df = load_company_df(company)
     if df.empty:
         st.warning("برای این شرکت پاسخی وجود ندارد."); st.stop()
-# === 👥 آمار پاسخ‌دهندگان (ابتدای داشبورد) ===
-st.markdown('<div class="panel"><h4>👥 آمار پاسخ‌دهندگان</h4>', unsafe_allow_html=True)
 
-# تعداد کل ردیف‌ها (هر ردیف = یک بار پرشدن پرسشنامه)
-resp_total = len(df)
+    # === 👥 آمار پاسخ‌دهندگان (ابتدای داشبورد) ===
+    st.markdown('<div class="panel"><h4>👥 آمار پاسخ‌دهندگان</h4>', unsafe_allow_html=True)
 
-# برآورد نفرات یکتا بر مبنای نام وارد‌شده (ممکن است برخی خالی باشد)
-unique_count = (
-    df["respondent"]
-    .astype(str)
-    .str.strip()
-    .replace("", np.nan)
-    .nunique()
-)
+    # تعداد کل پرسشنامه‌ها (هر ردیف = یک بار پرشدن فرم)
+    resp_total = len(df)
 
-# کارت‌های خلاصه
-kA, kB = st.columns(2)
-kA.markdown(
-    f"""<div class="kpi"><div class="title">تعداد پرسشنامه‌های ثبت‌شده</div>
-    <div class="value">{resp_total}</div><div class="sub">کل ردیف‌های این شرکت</div></div>""",
-    unsafe_allow_html=True
-)
-kB.markdown(
-    f"""<div class="kpi"><div class="title">برآورد «نفرات یکتا»</div>
-    <div class="value">{unique_count}</div><div class="sub">بر پایهٔ نام واردشده (اختیاری)</div></div>""",
-    unsafe_allow_html=True
-)
-
-# شمارش به تفکیک رده سازمانی (برحسب تعداد پرسشنامه‌ها)
-role_counts = df["role"].value_counts().reindex(ROLES, fill_value=0)
-rc_df = pd.DataFrame({"نقش": role_counts.index, "تعداد پرسشنامه": role_counts.values})
-
-c1, c2 = st.columns([2, 3])
-with c1:
-    st.dataframe(rc_df, use_container_width=True, hide_index=True)
-with c2:
-    fig_rc = px.bar(
-        rc_df, x="نقش", y="تعداد پرسشنامه",
-        template=PLOTLY_TEMPLATE, title="تعداد به تفکیک رده سازمانی"
+    # برآورد نفرات یکتا بر مبنای نام وارد‌شده (ممکن است برخی خالی باشد)
+    unique_count = (
+        df["respondent"]
+        .astype(str)
+        .str.strip()
+        .replace("", np.nan)
+        .nunique()
     )
-    st.plotly_chart(fig_rc, use_container_width=True)
 
-st.caption("نکته: اگر یک نفر چند بار فرم را پر کند، در آمار «پرسشنامه‌ها» چندبار شمرده می‌شود.")
-st.markdown('</div>', unsafe_allow_html=True)
-# === پایان آمار پاسخ‌دهندگان ===
-    
+    # کارت‌های خلاصه
+    kA, kB = st.columns(2)
+    kA.markdown(
+        f"""<div class="kpi"><div class="title">تعداد پرسشنامه‌های ثبت‌شده</div>
+        <div class="value">{resp_total}</div><div class="sub">کل ردیف‌های این شرکت</div></div>""",
+        unsafe_allow_html=True
+    )
+    kB.markdown(
+        f"""<div class="kpi"><div class="title">برآورد «نفرات یکتا»</div>
+        <div class="value">{unique_count}</div><div class="sub">بر پایهٔ نام واردشده (اختیاری)</div></div>""",
+        unsafe_allow_html=True
+    )
+
+    # شمارش به تفکیک رده سازمانی (برحسب تعداد پرسشنامه‌ها)
+    role_counts = df["role"].value_counts().reindex(ROLES, fill_value=0)
+    rc_df = pd.DataFrame({"نقش": role_counts.index, "تعداد پرسشنامه": role_counts.values})
+
+    c1, c2 = st.columns([2, 3])
+    with c1:
+        st.dataframe(rc_df, use_container_width=True)
+    with c2:
+        fig_rc = px.bar(
+            rc_df, x="نقش", y="تعداد پرسشنامه",
+            template=PLOTLY_TEMPLATE, title="تعداد به تفکیک رده سازمانی"
+        )
+        st.plotly_chart(fig_rc, use_container_width=True)
+
+    st.caption("نکته: اگر یک نفر چند بار فرم را پر کند، در آمار «پرسشنامه‌ها» چندبار شمرده می‌شود.")
+    st.markdown('</div>', unsafe_allow_html=True)
+    # === پایان آمار پاسخ‌دهندگان ===
+
     # نرمال‌سازی 0..100
     for t in TOPICS:
-        c=f"t{t['id']}_adj"
-        df[c]=pd.to_numeric(df[c], errors="coerce")
-        df[c]=df[c].apply(lambda x: (x/40)*100 if pd.notna(x) else np.nan)
+        c = f"t{t['id']}_adj"
+        df[c] = pd.to_numeric(df[c], errors="coerce")
+        df[c] = df[c].apply(lambda x: (x/40)*100 if pd.notna(x) else np.nan)
 
     # میانگین نقش‌ها
-    role_means={}
+    role_means = {}
     for r in ROLES:
-        sub=df[df["role"]==r]
-        role_means[r]=[sub[f"t{t['id']}_adj"].mean() if not sub.empty else np.nan for t in TOPICS]
+        sub = df[df["role"] == r]
+        role_means[r] = [sub[f"t{t['id']}_adj"].mean() if not sub.empty else np.nan for t in TOPICS]
 
     # میانگین سازمان (وزن‌دهی فازی)
-    per_role_norm_fa={r:role_means[r] for r in ROLES}
-    org_series=[org_weighted_topic(per_role_norm_fa, t["id"]) for t in TOPICS]
+    per_role_norm_fa = {r: role_means[r] for r in ROLES}
+    org_series = [org_weighted_topic(per_role_norm_fa, t["id"]) for t in TOPICS]
 
     # KPI
     st.markdown('<div class="panel">', unsafe_allow_html=True)
-    nanmean_org=np.nanmean(org_series)
-    org_avg=float(nanmean_org) if np.isfinite(nanmean_org) else 0.0
-    pass_rate=np.mean([1 if (v>=TARGET) else 0 for v in org_series if pd.notna(v)])*100 if any(pd.notna(v) for v in org_series) else 0
-    simple_means=[np.nanmean([role_means[r][i] for r in ROLES if pd.notna(role_means[r][i])]) for i in range(40)]
-    has_any=any(np.isfinite(x) for x in simple_means)
+    nanmean_org = np.nanmean(org_series)
+    org_avg = float(nanmean_org) if np.isfinite(nanmean_org) else 0.0
+    pass_rate = np.mean([1 if (v >= TARGET) else 0 for v in org_series if pd.notna(v)])*100 if any(pd.notna(v) for v in org_series) else 0
+    simple_means = [np.nanmean([role_means[r][i] for r in ROLES if pd.notna(role_means[r][i])]) for i in range(40)]
+    has_any = any(np.isfinite(x) for x in simple_means)
     if has_any:
-        best_idx=int(np.nanargmax(simple_means)); worst_idx=int(np.nanargmin(simple_means))
-        best_label=f"{best_idx+1:02d} — {TOPICS[best_idx]['name']}"; worst_label=f"{worst_idx+1:02d} — {TOPICS[worst_idx]['name']}"
+        best_idx = int(np.nanargmax(simple_means))
+        worst_idx = int(np.nanargmin(simple_means))
+        best_label = f"{best_idx+1:02d} — {TOPICS[best_idx]['name']}"
+        worst_label = f"{worst_idx+1:02d} — {TOPICS[worst_idx]['name']}"
     else:
-        best_label="-"; worst_label="-"
+        best_label = "-"
+        worst_label = "-"
 
     k1,k2,k3,k4 = st.columns(4)
     k1.markdown(f"""<div class="kpi"><div class="title">میانگین سازمان (فازی)</div>
@@ -673,7 +677,7 @@ st.markdown('</div>', unsafe_allow_html=True)
     labels_bar = [f"{i+idx0+1:02d}" for i,_ in enumerate(topics_slice)] if label_mode=="شماره (01..40)" else (names_short if label_mode=="نام کوتاه" else names_full)
     tick_numbers = [f"{i+idx0+1:02d}" for i,_ in enumerate(topics_slice)]
     tick_mapping_df = pd.DataFrame({"شماره":tick_numbers, "نام موضوع":names_full})
-    role_means_filtered={r: role_means[r][idx0:idx1] for r in roles_selected}
+    role_means_filtered = {r: role_means[r][idx0:idx1] for r in roles_selected}
     org_series_slice = org_series[idx0:idx1]
     st.markdown('</div>', unsafe_allow_html=True)
 
@@ -694,7 +698,7 @@ st.markdown('</div>', unsafe_allow_html=True)
 
     # میله‌ای گروهی (نقش‌ها)
     st.markdown('<div class="panel"><h4>نمودار میله‌ای گروهی (نقش‌ها)</h4>', unsafe_allow_html=True)
-    plot_bars_multirole({r:role_means[r][idx0:idx1] for r in roles_selected},
+    plot_bars_multirole({r: role_means[r][idx0:idx1] for r in roles_selected},
                         labels_bar, "مقایسه رده‌ها (0..100)", target=TARGET, height=bar_height)
     st.markdown('</div>', unsafe_allow_html=True)
 
@@ -705,8 +709,9 @@ st.markdown('</div>', unsafe_allow_html=True)
 
     # Heatmap و Boxplot
     st.markdown('<div class="panel"><h4>Heatmap و Boxplot</h4>', unsafe_allow_html=True)
-    heat_df = pd.DataFrame({"موضوع":labels_bar})
-    for r in roles_selected: heat_df[r]=role_means[r][idx0:idx1]
+    heat_df = pd.DataFrame({"موضوع": labels_bar})
+    for r in roles_selected:
+        heat_df[r] = role_means[r][idx0:idx1]
     hm = heat_df.melt(id_vars="موضوع", var_name="نقش", value_name="امتیاز")
     fig_heat = px.density_heatmap(hm, x="نقش", y="موضوع", z="امتیاز",
                                   color_continuous_scale="RdYlGn", height=560, template=PLOTLY_TEMPLATE)
@@ -740,7 +745,7 @@ st.markdown('</div>', unsafe_allow_html=True)
                 if X.shape[0] >= 2:
                     km = KMeans(n_clusters=K, n_init=10, random_state=42).fit(X)
                     clusters = km.labels_
-                    cl_df = pd.DataFrame({"موضوع":corr_base.index,"خوشه":clusters}).sort_values("خوشه")
+                    cl_df = pd.DataFrame({"موضوع": corr_base.index, "خوشه": clusters}).sort_values("خوشه")
                     st.dataframe(cl_df, use_container_width=True)
                 else:
                     st.info("برای خوشه‌بندی حداقل به ۲ موضوع نیاز است.")
@@ -753,9 +758,11 @@ st.markdown('</div>', unsafe_allow_html=True)
 
     # دانلود
     st.markdown('<div class="panel"><h4>دانلود</h4>', unsafe_allow_html=True)
-    st.download_button("⬇️ دانلود CSV پاسخ‌های شرکت",
-                       data=load_company_df(company).to_csv(index=False).encode("utf-8-sig"),
-                       file_name=f"{_sanitize_company_name(company)}_responses.csv", mime="text/csv")
+    st.download_button(
+        "⬇️ دانلود CSV پاسخ‌های شرکت",
+        data=load_company_df(company).to_csv(index=False).encode("utf-8-sig"),
+        file_name=f"{_sanitize_company_name(company)}_responses.csv",
+        mime="text/csv"
+    )
     st.caption("برای دانلود تصویر نمودارها، می‌توانید بستهٔ اختیاری `kaleido` را نصب کنید.")
     st.markdown('</div>', unsafe_allow_html=True)
-
