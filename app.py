@@ -7,7 +7,7 @@ import streamlit as st
 from pathlib import Path
 from datetime import datetime
 from typing import Optional
-from urllib.parse import quote  # برای encode مسیر گیت‌هاب
+from urllib.parse import quote  # برای پشتیبانی نام‌های فارسی در مسیر گیت‌هاب
 
 # ---------- پیش‌نیاز plotly ----------
 def _has_pkg(pkg, version=None):
@@ -58,7 +58,6 @@ h1,h2,h3,h4{ color:#16325c; }
 .q-question{ color:#0f3b8f; font-weight:700; margin:.2rem 0 .4rem 0; }
 
 .kpi{
-<style>
   border-radius:14px; padding:16px 18px; border:1px solid #e6ecf5;
   background:linear-gradient(180deg,#ffffff 0%,#f6f9ff 100%); box-shadow:0 8px 20px rgba(0,0,0,0.05);
   min-height:96px;
@@ -66,6 +65,7 @@ h1,h2,h3,h4{ color:#16325c; }
 .kpi .title{ color:#456; font-size:13px; margin-bottom:6px; }
 .kpi .value{ color:#0f3b8f; font-size:22px; font-weight:800; }
 .kpi .sub{ color:#6b7c93; font-size:12px; }
+<style>
 
 .panel{
   background: linear-gradient(180deg,#f2f7ff 0%, #eaf3ff 100%);
@@ -86,48 +86,8 @@ TARGET = 45  # 🎯
 
 # ---------- موضوعات (fallback در نبود topics.json) ----------
 TOPICS_PATH = BASE/"topics.json"
-EMBEDDED_TOPICS = [
-    {"id":1,"name":"هدف و زمینه (Purpose & Context)","desc":"..."},
-    {"id":2,"name":"مدیریت ذی‌نفعان","desc":"..."},
-    {"id":3,"name":"هزینه‌یابی و ارزش‌گذاری دارایی","desc":"..."},
-    {"id":4,"name":"خط مشی مدیریت دارایی","desc":"..."},
-    {"id":5,"name":"سیستم مدیریت دارایی (AMS)","desc":"..."},
-    {"id":6,"name":"اطمینان و ممیزی","desc":"..."},
-    {"id":7,"name":"استانداردهای فنی و قوانین","desc":"..."},
-    {"id":8,"name":"آرایش سازمانی","desc":"..."},
-    {"id":9,"name":"فرهنگ سازمانی","desc":"..."},
-    {"id":10,"name":"مدیریت شایستگی","desc":"..."},
-    {"id":11,"name":"مدیریت تغییر سازمانی","desc":"..."},
-    {"id":12,"name":"تحلیل تقاضا","desc":"..."},
-    {"id":13,"name":"توسعه پایدار","desc":"..."},
-    {"id":14,"name":"استراتژی و اهداف مدیریت دارایی","desc":"..."},
-    {"id":15,"name":"برنامه‌ریزی مدیریت دارایی","desc":"..."},
-    {"id":16,"name":"استراتژی و برنامه‌ریزی توقف‌ها و تعمیرات اساسی","desc":"..."},
-    {"id":17,"name":"برنامه‌ریزی اضطراری و تحلیل تاب‌آوری","desc":"..."},
-    {"id":18,"name":"استراتژی و مدیریت منابع","desc":"..."},
-    {"id":19,"name":"مدیریت زنجیره تأمین","desc":"..."},
-    {"id":20,"name":"تحقق ارزش چرخه عمر","desc":"..."},
-    {"id":21,"name":"هزینه‌یابی و ارزش‌گذاری دارایی (تمرکز مالی)","desc":"..."},
-    {"id":22,"name":"تصمیم‌گیری","desc":"..."},
-    {"id":23,"name":"ایجاد و تملک دارایی","desc":"..."},
-    {"id":24,"name":"مهندسی سیستم‌ها","desc":"..."},
-    {"id":25,"name":"قابلیت اطمینان یکپارچه","desc":"..."},
-    {"id":26,"name":"عملیات دارایی","desc":"..."},
-    {"id":27,"name":"اجرای نگهداری","desc":"..."},
-    {"id":28,"name":"مدیریت و پاسخ به رخدادها","desc":"..."},
-    {"id":29,"name":"بازتخصیص و کنارگذاری دارایی","desc":"..."},
-    {"id":30,"name":"استراتژی داده و اطلاعات","desc":"..."},
-    {"id":31,"name":"مدیریت دانش","desc":"..."},
-    {"id":32,"name":"استانداردهای داده و اطلاعات","desc":"..."},
-    {"id":33,"name":"مدیریت داده و اطلاعات","desc":"..."},
-    {"id":34,"name":"سیستم‌های داده و اطلاعات","desc":"..."},
-    {"id":35,"name":"مدیریت پیکربندی","desc":"..."},
-    {"id":36,"name":"مدیریت ریسک","desc":"..."},
-    {"id":37,"name":"پایش","desc":"..."},
-    {"id":38,"name":"بهبود مستمر","desc":"..."},
-    {"id":39,"name":"مدیریت تغییر","desc":"..."},
-    {"id":40,"name":"نتایج و پیامدها","desc":"..."},
-]
+# چون فایل شما وجود دارد، این fallback فقط برای اطمینان است
+EMBEDDED_TOPICS = [{"id": i, "name": f"موضوع {i}", "desc": ""} for i in range(1, 41)]
 if not TOPICS_PATH.exists():
     TOPICS_PATH.write_text(json.dumps(EMBEDDED_TOPICS, ensure_ascii=False, indent=2), encoding="utf-8")
 TOPICS = json.loads(TOPICS_PATH.read_text(encoding="utf-8"))
@@ -151,9 +111,9 @@ LEVEL_OPTIONS = [
 ]
 REL_OPTIONS = [("هیچ ارتباطی ندارد.",1),("ارتباط کم دارد.",3),("تا حدی مرتبط است.",5),("ارتباط زیادی دارد.",7),("کاملاً مرتبط است.",10)]
 
-# ---------- وزن‌های فازی ----------
+# ---------- وزن‌های فازی (کامل) ----------
 ROLE_MAP_EN2FA={"Senior Managers":"مدیران ارشد","Executives":"مدیران اجرایی","Supervisors/Sr Experts":"سرپرستان / خبرگان","Technical Experts":"متخصصان فنی","Non-Technical Experts":"متخصصان غیر فنی"}
-NORM_WEIGHTS = {  # کوتاه شده برای خوانایی؛ دیکشنری کامل شما را اینجا قرار داده‌ایم
+NORM_WEIGHTS = {
     1:{"Senior Managers":0.3846,"Executives":0.2692,"Supervisors/Sr Experts":0.1923,"Technical Experts":0.1154,"Non-Technical Experts":0.0385},
     2:{"Senior Managers":0.2692,"Executives":0.3846,"Supervisors/Sr Experts":0.1923,"Technical Experts":0.1154,"Non-Technical Experts":0.0385},
     3:{"Senior Managers":0.3846,"Executives":0.2692,"Supervisors/Sr Experts":0.1923,"Technical Experts":0.1154,"Non-Technical Experts":0.0385},
@@ -196,7 +156,7 @@ NORM_WEIGHTS = {  # کوتاه شده برای خوانایی؛ دیکشنری �
     40:{"Senior Managers":0.3846,"Executives":0.2692,"Supervisors/Sr Experts":0.1154,"Technical Experts":0.0385,"Non-Technical Experts":0.1923},
 }
 
-# ---------- GitHub backend (اختیاری) ----------
+# ---------- GitHub backend ----------
 def _get_secret(name, default=""):
     try:
         v = st.secrets.get(name, None)
@@ -210,6 +170,10 @@ GH_REPO   = _get_secret("GH_REPO", "").strip()          # "owner/repo"
 GH_BRANCH = _get_secret("GH_BRANCH", "main").strip()
 GH_DIR    = _get_secret("GH_DIR", "data").strip() or "data"
 USE_GH    = bool(GH_TOKEN and GH_REPO)
+
+# --- گارد: داده فقط وقتی ثبت/نمایش شود که GitHub کانفیگ باشد (برای جلوگیری از حذف روی دیسک Render) ---
+FORCE_REMOTE = True
+GITHUB_REQUIRED_MSG = "⚠️ ذخیره‌سازی ابری (GitHub) پیکربندی نشده است. برای جلوگیری از از دست رفتن داده، ثبت پاسخ/داشبورد غیرفعال شد."
 
 def _gh_headers():
     return {"Authorization": f"Bearer {GH_TOKEN}", "Accept": "application/vnd.github+json"}
@@ -300,7 +264,7 @@ def save_response(company: str, rec: dict):
         try:
             _gh_put_file(path, csv_bytes, msg, sha=sha); return
         except Exception:
-            st.warning("ذخیره در GitHub ناموفق بود؛ به‌صورت محلی ذخیره شد.")
+            st.warning("ذخیره در GitHub ناموفق بود؛ به‌صورت محلی ذخیره شد. مدیر سیستم PAT/دسترسی GitHub را بررسی کند.")
     (DATA_DIR/folder).mkdir(parents=True, exist_ok=True)
     df_new.to_csv(DATA_DIR/folder/"responses.csv", index=False)
 
@@ -401,6 +365,7 @@ tabs = st.tabs(["📝 پرسشنامه","📊 داشبورد"])
 
 # ======================= پرسشنامه =======================
 with tabs[0]:
+    # هدر
     st.markdown('<div class="page-head">', unsafe_allow_html=True)
     col1, col2 = st.columns([1,6])
     holding_logo_path = ASSETS_DIR/"holding_logo.png"
@@ -410,12 +375,14 @@ with tabs[0]:
         st.markdown('<div class="page-title">پرسشنامه تعیین سطح بلوغ هلدینگ انرژی گستر سینا و شرکت‌های تابعه در مدیریت دارایی فیزیکی</div>', unsafe_allow_html=True)
     st.markdown('</div>', unsafe_allow_html=True)
 
+    # برندینگ هلدینگ (تعویض لوگو)
     with st.expander("⚙️ برندینگ هلدینگ (اختیاری)"):
         holding_logo_file = st.file_uploader("لوگوی هلدینگ انرژی گستر سینا", type=["png","jpg","jpeg"], key="upl_holding_logo")
         if holding_logo_file:
             (ASSETS_DIR/"holding_logo.png").write_bytes(holding_logo_file.getbuffer())
             st.success("لوگوی هلدینگ به‌روزرسانی شد. صفحه را یک‌بار رفرش کنید.")
 
+    # باکس راهنما
     st.info("برای هر موضوع ابتدا توضیح فارسی آن را بخوانید، سپس با توجه به دو پرسش ذیل هر موضوع، یکی از گزینه‌های زیر هر پرسش را انتخاب بفرمایید.")
 
     company_input = st.text_input("نام شرکت")
@@ -446,6 +413,11 @@ with tabs[0]:
         elif len(answers) != len(TOPICS):
             st.error("لطفاً همهٔ ۴۰ موضوع را پاسخ دهید.")
         else:
+            # --- گارد: اگر GitHub تنظیم نیست، برای جلوگیری از پاک‌شدن داده، ذخیره را متوقف کن
+            if FORCE_REMOTE and not USE_GH:
+                st.error(GITHUB_REQUIRED_MSG)
+                st.stop()
+
             ensure_company(company)
             rec = {"timestamp": datetime.now().isoformat(timespec="seconds"),
                    "company": company, "respondent": respondent, "role": role_val}
@@ -471,6 +443,34 @@ with tabs[1]:
         + (f" — {GH_REPO} · {GH_BRANCH} · {GH_DIR}" if USE_GH else "")
     )
 
+    # --- گارد: اگر GitHub تنظیم نیست، داشبورد را متوقف کن تا دادهٔ محلی وابسته به دیسک موقت نباشد
+    if FORCE_REMOTE and not USE_GH:
+        st.error(GITHUB_REQUIRED_MSG)
+        st.stop()
+
+    # (اختیاری) ابزار تست اتصال GitHub
+    with st.expander("🔧 تست اتصال GitHub (ادمین)"):
+        if USE_GH:
+            if st.button("تست نوشتن فایل health در GitHub"):
+                try:
+                    test_path = f"{GH_DIR}/_health.txt"
+                    payload = f"ok @ {datetime.utcnow().isoformat()}Z".encode("utf-8")
+                    sha, _ = _gh_get_file(test_path)
+                    url = _gh_contents_url(test_path)
+                    body = {"message": "healthcheck", "branch": GH_BRANCH,
+                            "content": base64.b64encode(payload).decode("utf-8")}
+                    if sha: body["sha"] = sha
+                    r = requests.put(url, headers=_gh_headers(), json=body, timeout=25)
+                    if r.status_code in (200,201):
+                        st.success("نوشتن health در GitHub موفق بود ✅")
+                    else:
+                        st.error(f"خطا در نوشتن health (HTTP {r.status_code}): {r.text[:400]}")
+                except Exception as e:
+                    st.error(f"استثنا: {e}")
+        else:
+            st.info("USE_GH غیرفعال است (توکن/مخزن تنظیم نشده).")
+
+    # لیست شرکت‌ها (GitHub + لوکال)
     companies_local = sorted([d.name for d in DATA_DIR.iterdir() if d.is_dir()])
     companies_github = _gh_list_companies() if USE_GH else []
     companies = sorted(set(companies_local) | set(companies_github))
@@ -498,12 +498,10 @@ with tabs[1]:
     if df.empty:
         st.warning("برای این شرکت پاسخی وجود ندارد."); st.stop()
 
-    # === 👥 آمار پاسخ‌دهندگان ===
+    # === 👥 آمار پاسخ‌دهندگان (ابتدای داشبورد) ===
     st.markdown('<div class="panel"><h4>👥 آمار پاسخ‌دهندگان</h4>', unsafe_allow_html=True)
     resp_total = len(df)
-    unique_count = (
-        df["respondent"].astype(str).str.strip().replace("", np.nan).nunique()
-    )
+    unique_count = df["respondent"].astype(str).str.strip().replace("", np.nan).nunique()
 
     kA, kB = st.columns(2)
     kA.markdown(
@@ -519,15 +517,12 @@ with tabs[1]:
 
     role_counts = df["role"].value_counts().reindex(ROLES, fill_value=0)
     rc_df = pd.DataFrame({"نقش": role_counts.index, "تعداد پرسشنامه": role_counts.values})
-
     c1, c2 = st.columns([2, 3])
-    with c1:
-        st.dataframe(rc_df, use_container_width=True)
+    with c1: st.dataframe(rc_df, use_container_width=True)
     with c2:
         fig_rc = px.bar(rc_df, x="نقش", y="تعداد پرسشنامه",
                         template=PLOTLY_TEMPLATE, title="تعداد به تفکیک رده سازمانی")
         st.plotly_chart(fig_rc, use_container_width=True)
-
     st.caption("نکته: اگر یک نفر چند بار فرم را پر کند، در آمار «پرسشنامه‌ها» چندبار شمرده می‌شود.")
     st.markdown('</div>', unsafe_allow_html=True)
     # === پایان آمار پاسخ‌دهندگان ===
