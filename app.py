@@ -58,6 +58,7 @@ h1,h2,h3,h4{ color:#16325c; }
 .q-question{ color:#0f3b8f; font-weight:700; margin:.2rem 0 .4rem 0; }
 
 .kpi{
+<style>
   border-radius:14px; padding:16px 18px; border:1px solid #e6ecf5;
   background:linear-gradient(180deg,#ffffff 0%,#f6f9ff 100%); box-shadow:0 8px 20px rgba(0,0,0,0.05);
   min-height:96px;
@@ -65,7 +66,6 @@ h1,h2,h3,h4{ color:#16325c; }
 .kpi .title{ color:#456; font-size:13px; margin-bottom:6px; }
 .kpi .value{ color:#0f3b8f; font-size:22px; font-weight:800; }
 .kpi .sub{ color:#6b7c93; font-size:12px; }
-<style>
 
 .panel{
   background: linear-gradient(180deg,#f2f7ff 0%, #eaf3ff 100%);
@@ -671,3 +671,4 @@ with tabs[1]:
     )
     st.caption("برای دانلود تصویر نمودارها، می‌توانید بستهٔ اختیاری `kaleido` را نصب کنید.")
     st.markdown('</div>', unsafe_allow_html=True)
+
